@@ -1,0 +1,51 @@
+flowchart TD
+    subgraph DATA["Data Zone"]
+        LT["Labeling Tool\n:3001"]
+        MINIO["MinIO\nraw-images · mlops-registry"]
+        PG["PostgreSQL\nannotations"]
+        SNAP["POST /snapshots"]
+        VER["dataset_version.txt"]
+        LT -->|images| MINIO
+        LT -->|metadata| PG
+        LT --> SNAP
+        SNAP -->|snapshot · dataset · test| MINIO
+        SNAP --> VER
+    end
+
+    subgraph TRAIN["Training Zone"]
+        GH["GitHub Actions\nself-hosted runner"]
+        TRAINER["Trainer Job\nOptuna × N trials"]
+        MLFLOW["MLflow\nexperiments · champion"]
+        VER -->|git push| GH
+        GH -->|helm upgrade| TRAINER
+        MINIO -->|dataset| TRAINER
+        TRAINER -->|log runs| MLFLOW
+        TRAINER -->|reference_embeddings.npy| MINIO
+    end
+
+    subgraph SERVE["Serving Zone"]
+        API["FastAPI\n/predict :8000"]
+        PROM["Prometheus"]
+        GRAFANA["Grafana\n:3000"]
+        CLIENT["Client / App"]
+        MLFLOW -->|load champion| API
+        CLIENT -->|POST /predict| API
+        API --> PROM --> GRAFANA
+    end
+
+    subgraph DRIFT["Drift Detection Zone"]
+        DD["Drift Detector\nCronJob · hourly"]
+        CS{"Cosine Similarity"}
+        EMAIL["Email\nGmail SMTP"]
+        MLOG["MLflow\ndrift-monitoring/"]
+        MOVE["Move images\n→ raw_images/"]
+        MINIO -->|inference samples| DD
+        MINIO -->|ref embeddings| DD
+        DD --> CS
+        CS -->|result| EMAIL
+        CS -->|log| MLOG
+        DD --> MOVE
+        MOVE -->|chờ gắn nhãn| LT
+    end
+
+    API -->|~14% samples| MINIO

@@ -1,0 +1,85 @@
+{{- if ((.Values.driftDetector).enabled) }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: drift-detector
+  namespace: {{ .Values.namespace }}
+spec:
+  schedule: {{ .Values.driftDetector.schedule | default "0 * * * *" | quote }}  # mỗi giờ
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: drift-detector
+              image: {{ .Values.trainer.image }}
+              imagePullPolicy: Never
+              command: ["python", "src/drift_detector.py"]
+              env:
+                - name: MLFLOW_TRACKING_URI
+                  valueFrom:
+                    configMapKeyRef:
+                      name: mlops-config
+                      key: MLFLOW_TRACKING_URI
+                - name: MLFLOW_S3_ENDPOINT_URL
+                  valueFrom:
+                    configMapKeyRef:
+                      name: mlops-config
+                      key: MLFLOW_S3_ENDPOINT_URL
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: mlops-secret
+                      key: AWS_ACCESS_KEY_ID
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: mlops-secret
+                      key: AWS_SECRET_ACCESS_KEY
+                - name: MINIO_URL
+                  value: "http://minio-service:9000"
+                - name: MINIO_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: mlops-secret
+                      key: AWS_ACCESS_KEY_ID
+                - name: MINIO_SECRET_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: mlops-secret
+                      key: AWS_SECRET_ACCESS_KEY
+                - name: MINIO_BUCKET
+                  value: {{ .Values.labeling.minioBucket }}
+                - name: REGISTRY_BUCKET
+                  value: {{ .Values.labeling.registryBucket }}
+                - name: SMTP_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: mlops-secret
+                      key: SMTP_USER
+                - name: SMTP_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: mlops-secret
+                      key: SMTP_PASSWORD
+                - name: NOTIFY_EMAIL
+                  value: {{ .Values.driftDetector.notifyEmail | default "" | quote }}
+              volumeMounts:
+                - name: model-code
+                  mountPath: /app/src/models
+                - name: model-params
+                  mountPath: /app/params.yaml
+                  subPath: params.yaml
+          volumes:
+            - name: model-code
+              configMap:
+                name: model-code
+            - name: model-params
+              configMap:
+                name: model-params
+{{- end }}
