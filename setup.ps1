@@ -46,9 +46,9 @@ $status = minikube status --format="{{.Host}}" 2>$null
 
 if ($status -ne "Running") {
     Write-Host "Minikube is not running. Starting..." -ForegroundColor Yellow
-    # --memory : RAM cấp cho Minikube (MB) — tối thiểu 4096, nên để 6144+ nếu máy có >= 16GB
+    # --memory : RAM cấp cho Minikube (MB) — tối thiểu 3500, nên để 6144+ nếu máy có >= 16GB
     # --cpus   : số CPU — tối thiểu 4, nên để nhiều hơn nếu muốn train nhanh hơn
-    minikube start --memory=4096 --cpus=4
+    minikube start --memory=3500 --cpus=4
     if ($LASTEXITCODE -ne 0) {
         Write-Host "ERROR: Failed to start Minikube!" -ForegroundColor Red
         exit 1

@@ -19,7 +19,7 @@ cd mlops_k8s_local_full
 - Windows/macOS: https://www.docker.com/products/docker-desktop
 - Vào Settings → Resources → Memory: tối thiểu **4GB**
 
-> **Tùy chỉnh RAM / CPU cho Minikube** — mặc định script dùng `--memory=4096 --cpus=4`. Nếu máy có RAM >= 16GB nên tăng lên `--memory=6144` trở lên để train nhanh hơn và tránh bị OOM. Chỉnh trong `setup.ps1` / `setup.sh` dòng `minikube start` trước khi chạy.
+> **Tùy chỉnh RAM / CPU cho Minikube** — mặc định script dùng `--memory=3500 --cpus=4`. Nếu máy có RAM >= 16GB nên tăng lên `--memory=6144` trở lên để train nhanh hơn và tránh bị OOM. Chỉnh trong `setup.ps1` / `setup.sh` dòng `minikube start` trước khi chạy.
 
 ### Minikube
 ```bash
@@ -213,7 +213,27 @@ Chỉnh `task_name`, `models`, `n_trials`, `max_num_epochs` theo nhu cầu.
 
 ---
 
-## Bước 7 — Chạy setup script
+## Bước 7 — Chỉnh RAM / CPU trước khi chạy
+
+Script sẽ tự start Minikube với giá trị mặc định `--memory=3500 --cpus=4` (4GB RAM, 4 CPU). Trước khi chạy, mở `setup.ps1` (Windows) hoặc `setup.sh` (Linux/macOS) và chỉnh dòng này cho phù hợp với máy:
+
+```powershell
+minikube start --memory=3500 --cpus=4
+#                       ^^^^        ^
+#                       MB RAM      số CPU
+```
+
+| Máy | Gợi ý |
+|-----|-------|
+| 8GB RAM | `--memory=3500 --cpus=4` (mặc định) |
+| 16GB RAM | `--memory=8192 --cpus=6` |
+| 32GB RAM+ | `--memory=12288 --cpus=8` |
+
+> Cấp ít RAM → train chậm, dễ OOM crash. Cấp nhiều CPU → Optuna chạy trials song song nhanh hơn.
+
+---
+
+## Bước 8 — Chạy setup script
 
 **Windows** — mở **PowerShell** (không phải CMD, không double-click file):
 

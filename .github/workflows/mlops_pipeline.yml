@@ -276,4 +276,4 @@ jobs:
       # Thay toàn bộ 2 step "Đợi API healthy" bằng:
       - name: Đợi API rollout xong
         if: steps.check_data_win.outputs.has_data == 'true' || steps.check_data_unix.outputs.has_data == 'true'
-        run: kubectl rollout status deployment/api -n mlops --timeout=600s
+        run: kubectl rollout status deployment/api -n mlops --timeout=1200s

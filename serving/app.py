@@ -42,7 +42,7 @@ try:
     with open("params.yaml") as f:
         cfg = yaml.safe_load(f)
     IMG_SIZE        = cfg["data"]["img_size"]
-    EXPERIMENT_NAME = cfg["mlflow"]["experiment_name"]
+    EXPERIMENT_NAME = f"{cfg['mlflow']['experiment_base_name']}/{cfg['pipeline']['task_name']}"
 except Exception:
     IMG_SIZE        = 32      # fallback
     EXPERIMENT_NAME = "image-generic"
