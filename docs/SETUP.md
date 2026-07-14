@@ -7,8 +7,8 @@
 ## Bước 1 — Clone project
 
 ```bash
-git clone https://github.com/mnhut0550/mlops_k8s_local_full.git
-cd mlops_k8s_local_full
+git clone https://github.com/mnhut0550/mlops_local_k8s.git
+cd mlops_local_k8s
 ```
 
 ---
