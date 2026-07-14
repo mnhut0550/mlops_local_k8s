@@ -87,6 +87,7 @@ def dct_objective(trial, cfg: dict, splits: dict, class_names: list[str],
             "model":     model_name,
             "lr":        lr,
             "optimizer": opt_name,
+            "classes":   str(class_names),
         })
 
         best_map50  = [0.0]

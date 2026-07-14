@@ -155,8 +155,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Image Classifier API",
-    description="Generic Image Classifier — MLOps Demo",
+    title="Generic Vision API",
+    description="Generic Vision — MLOps Demo",
     version="1.0.0",
     lifespan=lifespan,
 )

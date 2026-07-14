@@ -115,6 +115,7 @@ def cls_objective(trial, cfg: dict, splits: dict,
 
         train_loader, val_loader, classes = build_cls_loaders(splits, batch_size, img_size)
         num_classes = len(classes)
+        mlflow.log_param("classes", str(classes))
         model       = build_model(model_name, num_classes, freeze_backbone=False).to(device)
 
         criterion = nn.CrossEntropyLoss()
