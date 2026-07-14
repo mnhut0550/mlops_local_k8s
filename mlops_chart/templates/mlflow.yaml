@@ -24,6 +24,7 @@ spec:
             - --port={{ .Values.mlflow.port }}
             - --backend-store-uri=sqlite:///mlflow/mlflow.db
             - --default-artifact-root=s3://mlflow/artifacts
+            - --workers=2
           ports:
             - containerPort: {{ .Values.mlflow.port }}
           env:
