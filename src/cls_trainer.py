@@ -105,6 +105,9 @@ def cls_objective(trial, cfg: dict, splits: dict,
                                            training_cfg["lr_max"], log=True)
     opt_name   = trial.suggest_categorical("optimizer", training_cfg["optimizer_choices"])
 
+    patience      = training_cfg.get("early_stopping_patience", 7)
+    stable_window = training_cfg.get("stable_window", 5)
+
     with mlflow.start_run(run_name=f"trial_{trial.number}", nested=True):
         mlflow.log_params({
             "trial":     trial.number,
@@ -124,9 +127,14 @@ def cls_objective(trial, cfg: dict, splits: dict,
             filter(lambda p: p.requires_grad, model.parameters()),
             lr,
         )
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, mode="max", patience=3, factor=0.5, min_lr=1e-6
+        )
 
-        best_f1    = 0.0
-        best_state = None
+        best_f1        = 0.0
+        best_state     = None
+        no_improve     = 0
+        val_f1_history = []
 
         for epoch in range(1, max_epochs + 1):
             model.train()
@@ -158,13 +166,23 @@ def cls_objective(trial, cfg: dict, splits: dict,
                 "val_loss": val_loss,
             }, step=epoch)
 
+            val_f1_history.append(val_f1)
+            scheduler.step(val_f1)
+
             if val_f1 > best_f1:
                 best_f1    = val_f1
                 best_state = {k: v.cpu().clone() for k, v in model.state_dict().items()}
+                no_improve = 0
+            else:
+                no_improve += 1
 
             trial.report(val_f1, epoch)
             if trial.should_prune():
                 raise optuna.TrialPruned()
+
+            if no_improve >= patience:
+                print(f"  Early stopping trial {trial.number} tại epoch {epoch}")
+                break
 
         mlflow.log_metric("best_val_f1", best_f1)
 
@@ -173,7 +191,9 @@ def cls_objective(trial, cfg: dict, splits: dict,
             model.eval()
             mlflow.pytorch.log_model(model, artifact_path="model")
 
-    return best_f1
+        # Stable pick: trung bình N epoch cuối thay vì lấy spike cao nhất
+        window = val_f1_history[-stable_window:]
+        return sum(window) / len(window)
 
 
 # ============================================================

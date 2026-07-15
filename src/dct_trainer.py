@@ -59,11 +59,13 @@ def dct_objective(trial, cfg: dict, splits: dict, class_names: list[str],
     except ImportError:
         raise RuntimeError("ultralytics not installed. Run: pip install ultralytics")
 
-    optuna_cfg   = cfg["optuna_tuning"]
-    training_cfg = cfg["training"]
-    max_epochs   = optuna_cfg["max_num_epochs"]
-    data_dir     = cfg["data"]["data_dir"]
-    img_size     = cfg["data"]["img_size"]
+    optuna_cfg    = cfg["optuna_tuning"]
+    training_cfg  = cfg["training"]
+    max_epochs    = optuna_cfg["max_num_epochs"]
+    data_dir      = cfg["data"]["data_dir"]
+    img_size      = cfg["data"]["img_size"]
+    patience      = training_cfg.get("early_stopping_patience", 7)
+    stable_window = training_cfg.get("stable_window", 5)
 
     model_name = trial.suggest_categorical("model", cfg["models"])
     lr         = trial.suggest_float("lr", training_cfg["lr_min"],
@@ -90,8 +92,9 @@ def dct_objective(trial, cfg: dict, splits: dict, class_names: list[str],
             "classes":   str(class_names),
         })
 
-        best_map50  = [0.0]
-        pruned_flag = [False]
+        best_map50     = [0.0]
+        pruned_flag    = [False]
+        map50_history  = []
 
         def on_val_end(trainer):
             epoch   = trainer.epoch + 1
@@ -106,6 +109,8 @@ def dct_objective(trial, cfg: dict, splits: dict, class_names: list[str],
                 "precision": prec,
                 "recall":    rec,
             }, step=epoch)
+
+            map50_history.append(map50)
 
             if map50 > best_map50[0]:
                 best_map50[0] = map50
@@ -126,6 +131,7 @@ def dct_objective(trial, cfg: dict, splits: dict, class_names: list[str],
             lr0=lr,
             optimizer=opt_name,
             device=0 if torch.cuda.is_available() else "cpu",
+            patience=patience,   # YOLO early stopping built-in
             verbose=False,
         )
 
@@ -141,7 +147,9 @@ def dct_objective(trial, cfg: dict, splits: dict, class_names: list[str],
         except Exception as e:
             print(f"  WARNING: Could not log YOLO weights: {e}")
 
-    return best_map50[0]
+        # Stable pick: trung bình N epoch cuối thay vì lấy spike cao nhất
+        window = map50_history[-stable_window:] if map50_history else [0.0]
+        return sum(window) / len(window)
 
 
 # ============================================================

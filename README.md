@@ -98,6 +98,106 @@ mlops_local_k8s/
 
 ---
 
+## Demo
+
+Pipeline chạy thực tế trên MNIST subset (3 class: 0, 6, 8 — 3000 ảnh).
+
+### 1. Setup
+
+Script tự động kiểm tra tools, start Minikube, build Docker images và deploy toàn bộ stack lên K8s.
+
+![Setup script](images/setup.png)
+
+---
+
+### 2. Gắn nhãn dữ liệu
+
+Upload ảnh bằng cách kéo thả hoặc chọn folder. Hỗ trợ 3 format: Classification (ImageFolder), Detection (YOLO), hoặc ảnh lẻ chưa có nhãn.
+
+![Upload tool](images/label-image-tool_upload.png)
+
+Chọn folder — tool tự phát hiện classes từ cấu trúc thư mục và preview ảnh trước khi upload.
+
+![Dataset preview](images/dataset_detail.png)
+
+Upload 3000 ảnh theo batch lên MinIO. Tiến độ hiển thị realtime.
+
+![Uploading](images/uploading_data.png)
+
+Sau khi upload, vào tab **Label** để gắn nhãn thủ công cho ảnh chưa có class.
+
+![Label tab](images/label-image-tool-label.png)
+
+Tab **Progress** theo dõi tiến độ toàn bộ dataset — 3000/3000 ảnh đã label, phân bố đều 1000 ảnh/class.
+
+![Progress](images/label-image-tool-progress.png)
+
+Khi đủ data, tab **Train** tạo snapshot dataset và trigger CI/CD pipeline trên GitHub Actions.
+
+![Trigger training](images/label-image-tool-train-dataset-created.png)
+
+---
+
+### 3. CI/CD Pipeline
+
+GitHub Actions tự động chạy khi nhận commit. Self-hosted runner chạy trên máy local — kết nối và chờ job.
+
+![Actions runner](images/action_runner.png)
+
+Pipeline bắt đầu — kiểm tra dataset version, build image (nếu cần), tạo ConfigMaps, deploy trainer.
+
+![Pipeline steps](images/git-action-detail-upper.png)
+
+Helm upgrade bật trainer Job + API, sau đó đợi trainer chạy xong.
+
+![Helm upgrade](images/git-action-detail-lower.png)
+
+Pipeline hoàn thành sau **4 giờ 6 phút** — bao gồm 20 Optuna trials, evaluate test set, register model và rollout API.
+
+![Pipeline finish](images/git-action-finish.png)
+
+---
+
+### 4. Experiment Tracking — MLflow
+
+MLflow trống trước khi train lần đầu.
+
+![MLflow empty](images/mlflow-empty.png)
+
+Sau training: 21 runs — 1 parent study và 20 child trials. Mỗi trial log đầy đủ params, metrics, model artifact.
+
+![Trial list](images/list-trial-upper.png)
+
+Learning curves của một trial — val_f1 và val_acc tăng đều, val_loss giảm hội tụ ổn định.
+
+![Trial metrics](images/trial-detail-metric.png)
+
+Trial tốt nhất (trial_12 — ResNet18, SGD) được tự động register vào MLflow Model Registry với alias `champion`.
+
+![Best trial registered](images/trial-detail-lower-registered.png)
+
+Parent run tổng hợp kết quả toàn bộ study: **test_f1 = 0.993**, **test_acc = 0.993** trên 600 ảnh test.
+
+![Final results](images/mlflow-final-model-with-test-set-lower.png)
+
+---
+
+### 5. Serving API
+
+FastAPI expose 4 endpoints. Swagger UI tự động sinh từ code.
+
+![API docs](images/api-docs-page.png)
+
+`GET /health` — kiểm tra model đã load, trả về tên model, alias, danh sách classes và img_size.
+
+![Health check](images/api-health.png)
+
+`POST /predict` — nhận ảnh, trả về class dự đoán, confidence và top-3 results.
+
+![Predict](images/api-predict-sample.png)
+
+---
+
 ## Tài liệu
 
 - [docs/SETUP.md](docs/SETUP.md) — Cài tools, cấu hình, chạy setup script lần đầu

@@ -31,6 +31,8 @@ training:
   optimizer_choices: ["Adam", "SGD", "RMSprop"]
   lr_min: 1.0e-5
   lr_max: 1.0e-2
+  early_stopping_patience: 7            # Dừng trial nếu val_f1 không improve sau N epoch
+  stable_window: 5                      # Lấy trung bình N epoch cuối làm metric cho Optuna
 
 models:
   - "ResNet18"
